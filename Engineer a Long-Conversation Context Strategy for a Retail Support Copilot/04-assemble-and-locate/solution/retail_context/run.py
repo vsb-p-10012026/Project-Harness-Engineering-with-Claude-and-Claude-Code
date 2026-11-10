@@ -57,8 +57,8 @@ def _build(run_dir: Path) -> tuple[Any, Any, Any]:
 
     assembled = build_context(facts, compressed)
 
-    (run_dir / "context.md").write_text(assembled.markdown)
-
+    (run_dir / "context.md").write_text(assembled.markdown, encoding="utf-8")
+    
     section_tokens = assembled.section_tokens()
     total = assembled.total_tokens()
     # TODO (Exercise 3): Build the coherent budget dict and write it to
@@ -81,8 +81,25 @@ def _build(run_dir: Path) -> tuple[Any, Any, Any]:
     #                                compressed.summaries[issue_id]
     #
     # Write json.dumps(budget, indent=2) to `run_dir / "budget.json"`.
-    budget: dict[str, Any] = {}
-    raise NotImplementedError("Exercise 3: build the coherent budget dict and write budget.json")
+    reduction_pct = round((1 - total / baseline) * 100, 2) if baseline else 0
+    compression_api = {
+        issue_id: {
+            "input_tokens": summary.input_tokens,
+            "output_tokens": summary.output_tokens,
+        }
+        for issue_id, summary in compressed.summaries.items()
+    }
+
+    budget = {
+        "token_counter_methodology": tokens.methodology(),
+        "baseline_tokens": baseline,
+        "assembled_tokens": total,
+        "reduction_pct": reduction_pct,
+        "per_section_tokens": section_tokens,
+        "compression_api": compression_api,
+    }
+
+    (run_dir / "budget.json").write_text(json.dumps(budget, indent=2), encoding="utf-8")
 
     print()
     print(f"      assembled tokens: {total}  ({budget['reduction_pct']}% reduction)")

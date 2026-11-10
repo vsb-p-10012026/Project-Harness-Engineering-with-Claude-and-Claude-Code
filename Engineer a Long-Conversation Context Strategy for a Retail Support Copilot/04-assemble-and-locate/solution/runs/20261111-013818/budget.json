@@ -1,0 +1,22 @@
+{
+  "token_counter_methodology": "len(text) / 3.8 heuristic (stub \u2014 Exercise 3 adds the SDK dispatch)",
+  "baseline_tokens": 47144,
+  "assembled_tokens": 20310,
+  "reduction_pct": 56.92,
+  "per_section_tokens": {
+    "case_facts": 133,
+    "resolved_refund": 292,
+    "resolved_subscription": 344,
+    "active": 19538
+  },
+  "compression_api": {
+    "refund": {
+      "input_tokens": 12496,
+      "output_tokens": 317
+    },
+    "subscription": {
+      "input_tokens": 11637,
+      "output_tokens": 337
+    }
+  }
+}

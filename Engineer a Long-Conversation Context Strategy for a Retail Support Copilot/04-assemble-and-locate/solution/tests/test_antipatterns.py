@@ -97,7 +97,7 @@ def test_assembled_context_active_segment_byte_exact():
 
     t = load(ROOT / "data" / "transcript_48turns.json")
     raw_active = "\n\n".join(turn.render() for turn in t.active_turns)
-    context_md = (run / "context.md").read_text()
+    context_md = (run / "context.md").read_text(encoding="utf-8")
     assert raw_active in context_md, (
         "active segment in context.md does not match raw turns 29-48 byte-for-byte"
     )

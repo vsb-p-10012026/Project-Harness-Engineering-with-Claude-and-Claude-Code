@@ -82,7 +82,6 @@ def build(case_facts: CaseFacts, compressed: Compressed) -> AssembledContext:
     # 5. Return an AssembledContext with all five fields populated. The
     #    `active_raw_text` field is `compressed.active_text` — the AST audit uses
     #    it to verify the assembled `active_block` body equals the raw turns.
-
     case_facts_md = case_facts.to_markdown().strip()
     case_facts_block = f"{case_facts_md}\n"
 
@@ -97,19 +96,19 @@ def build(case_facts: CaseFacts, compressed: Compressed) -> AssembledContext:
         title = RESOLVED_TITLES[issue_id]
         block = f"{title}\n\n{summary_text}\n"
         resolved_blocks[issue_id] = block
-        resolved_parts.append(block.strip())
+        resolved_parts.append(block)
 
     active_issue_id = compressed.active_issue_id
     active_title = ACTIVE_TITLES.get(active_issue_id, f"# Active issue: {active_issue_id}")
     active_body = compressed.active_text
+    
     active_block = f"{active_title}\n\n{active_body}\n"
 
-    all_sections = [case_facts_block.strip()]
-    for block in resolved_parts:
-        all_sections.append(block)
-    all_sections.append(active_block.strip())
-
-    markdown = "\n\n".join(all_sections) + "\n"
+    markdown = (
+        case_facts_block + "\n"
+        + "\n".join(resolved_parts) + "\n"
+        + active_block
+    )
 
     return AssembledContext(
         markdown=markdown,

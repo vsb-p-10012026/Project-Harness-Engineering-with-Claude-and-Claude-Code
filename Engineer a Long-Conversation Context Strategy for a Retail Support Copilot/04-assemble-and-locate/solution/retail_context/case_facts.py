@@ -82,6 +82,7 @@ class CaseFacts:
             f"payment_update_status={self.payment_update_status}"
         )
 
+
 class CaseFactExtractionError(ValueError):
     def __init__(self, missing: list[str], raw: dict[str, Any]):
         super().__init__(f"case-facts extraction missing required fields: {missing}")
@@ -114,9 +115,11 @@ You must return EXACTLY one JSON object containing the following 12 keys, with n
 - payment_update_status (string)
 
 Rules:
-1. If a field is missing or cannot be determined from the transcript, you must STILL include the key with a null value rather than omitting it (validation will catch null/missing values and raise an error).
-2. Return ONLY raw JSON. No conversational prose, no explanations, and no markdown fences.
+1. If a field is missing or cannot be determined from the transcript, you must STILL include the key with a null value rather than omitting it.
+2. For payment_update_status, since this represents the active ongoing troubleshooting issue in the conversation, set its value strictly to "in_progress".
+3. Return ONLY raw JSON. No conversational prose, no explanations, and no markdown fences.
 """
+
 
 def _parse_json(raw: str) -> dict[str, Any]:
     raw = raw.strip()
@@ -193,6 +196,7 @@ def extract(
         payment_update_failure_code=str(parsed_dict["payment_update_failure_code"]),
         payment_update_status=str(parsed_dict["payment_update_status"]),
     )
+
 
 def to_dict(facts: CaseFacts) -> dict[str, Any]:
     return asdict(facts)
