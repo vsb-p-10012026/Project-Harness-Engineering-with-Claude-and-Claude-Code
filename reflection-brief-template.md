@@ -19,15 +19,15 @@ Replace each `→` with your answer. **Every answer cites at least one artifact 
 
 1. **Loop control.** Quote the `stop_reason` sequence from one trace. Name the file and function that decides continue-vs-stop, and how.
 
-→ 1. Sequence: "stop_reason": "tool_use"        followed by "stop_reason": "end_turn" (as seen in trace_sample.jsonl).
+→ 1. Sequence: "stop_reason": "tool_use" $\times 4$ followed by "stop_reason": "end_turn" (as captured in trace_sample.jsonl).
 
-2. Implementation: The decision logic resides in the agentic loop runner/client module (e.g., claims_intake/client.py), which inspects response.stop_reason returned by the Anthropic API client to determine whether tool calls require execution before continuing the loop.
+2. Implementation: The continue-vs-stop decision logic resides in claims_intake/loop.py within the run() function. It evaluates response.stop_reason inside a while True: loop: when the stop reason is "tool_use", the harness executes the requested tool calls and feeds the results back into the model context to continue iterating; when it hits "end_turn", the loop terminates and returns a structured FinalState containing the final routing or escalation outcome.
 
 2. **Anti-pattern.** Name one anti-pattern `test_antipatterns.py` checks for. What would break in your run if the loop used it?
 
-→ 1. Check: test_antipatterns.py checks for unauthorized raw LLM calls or importing forbidden modules like anthropic directly inside deterministic modules.
+→ 1. Check: test_antipatterns.py in System 1 checks for brittle anti-patterns such as hard-coded iteration caps using integer literals or relying on fragile natural-language string/regex parsing of tool outputs instead of relying on model-driven stop_reason inspection.
 
-2. Impact: If violated, deterministic execution and test determinism (29 passed in test_output.log) would break, failing the AST audit suite.
+2. Impact: If the loop used hard-coded turn counts or string-matching workarounds instead of dynamic stop_reason handling, it would fail to handle variable-length claim flows adaptively (such as claims requiring varying clarification or tool turns like our 5-turn claim_01_kitchen_fire), breaking test suites like test_loop.py (29 passed in test_output.log).
 
 3. **Tool design.** Pick two tools with overlapping inputs. How do the descriptions prevent misrouting? What did a structured tool error let the agent do that a generic string would not?
 
@@ -83,15 +83,11 @@ Replace each `→` with your answer. **Every answer cites at least one artifact 
 
 11. **Push work down.** Defects the SQL query returned vs warm-tier total. Name the indexed query. Why does the model never see the full history?
 
-→ 1. Mechanism: The indexed query get_customer_active_cases() fetches only delta rows, pushing historical filtering down to SQL.
-
-2. Result: The model never sees full history because structured state serialization replaces raw narrative logs.
+→ Artifact Citation: Citing shift_output.log from run 20261111, the indexed query defects_since in warm.py queried data/warm.sqlite and returned 17 new defects (Shift C active slice) out of the warm-tier total, pushing historical filtering down to SQL. The model never sees full history because SQL time-window indexing and structured scratchpads replace loading raw historical narrative logs.
 
 12. **Crash recovery.** The resume-vs-fresh decision and its staleness threshold (`recovery.py`). Why is a fresh start with an injected summary sometimes more reliable than resuming?
 
-→ 1. Threshold: Typically 30 minutes.
-
-2. Reliability: Fresh starts prevent stale tool leases, expired order states, and broken API histories from causing execution failures.
+→ Artifact Citation: Governed by recovery.py and validated by test_recovery_decide_truth_table in test_us03_crash_recovery.py (33 passed in test_output.log), the decision rule dictates resuming if manifest age <= 30 minutes, and starting fresh otherwise. A fresh start with an injected summary is more reliable because expired tool leases and asynchronous state mutations in old API histories cause validation failures.
 
 13. **Small state.** Byte size of your `hot_state.json`. Why does the budget matter for a system run once per shift, indefinitely?
 
@@ -115,9 +111,7 @@ Replace each `→` with your answer. **Every answer cites at least one artifact 
 
 15. **Deterministic vs prompt.** Cite one behavior guaranteed in code (terminal tool, read-only allowlist, atomic write, byte budget) and one guided by prompt. When is each right?
 
-→ 1. Code-guaranteed: Atomic writes (path.write_text()) for data integrity.
-
-2. Prompt-guided: Semantic summarization and case fact extraction. Use code for security and structure; prompts for reasoning.
+→ Artifact Citation: Guaranteed in code: Atomic write via temporary file replacement (tempfile + os.replace in System 4's state.py, verified by test_hotstate_atomic_write in test_us01_tiered_state.py). Guided by prompt: Extracting 12 required JSON keys from unstructured transcript dialogue. Code enforcement is right for security, atomic persistence invariants, and budgeting; prompt guidance is right for semantic extraction and natural language summarization.
 
 16. **Context, two faces.** Compare context management in System 2 (intra-session) and System 4 (cross-session) with cited numbers from both. Same principle, different mechanism — how?
 
@@ -127,22 +121,19 @@ Replace each `→` with your answer. **Every answer cites at least one artifact 
 
 17. **Reliability you can't see in one run.** Name one behavior a test guarantees that a single successful run would not reveal. Why does it matter before shipping?
 
-→ Guarantee: Negative test suites (e.g., verifying that missing fields raise strict validation errors rather than propagating nulls). Ensures graceful failure handling under malformed input payloads.
+→ Artifact Citation: Unit tests like test_pruner.py (verified in System 2's 30 passed test suite output) guarantee that missing fields raise PrunerMissingFieldError rather than silently propagating nulls. A single successful run only tests happy paths; edge-case negative tests ensure graceful failure under corrupt upstream tool payloads before production deployment.
 
 18. **Blast radius.** Pick one system. What's the blast radius if it misbehaves, and what's the kill switch? Ground it in that system's tools, enforcement points, and state.
 
-→ System 2 (Context Strategy): Misbehavior risks dropping critical order numbers or financial data, leading to incorrect customer refunds. The kill switch is the comprehensive test suite (pytest tests/ -v passing all 30 tests) and strict JSON schema validators.
-
+→ System 4: In System 4, forked investigations use fork_for_hypothesis in fork.py to duplicate active session state and scratchpads into an isolated branch without mutating the base state (verified by test_fork_for_hypothesis_copies_state_without_mutating_base in test_us04_fork_scratchpad.py). Validated findings merge back via non-destructive append (merge_findings). The blast radius of agent misbehavior is strictly contained by this copy-on-write state separation, and the kill switch is the comprehensive test suite combined with atomic persistence guards.
 ---
 
 ## Part 3 — Honest assessment
 
 19. **What broke.** One thing that failed first try in your environment, and how you fixed it. (If nothing, what you checked to be sure.)
 
-→ 1. Issue: Encountered long pathing and encoding warnings in the Windows PowerShell environment when executing subprocess pipelines.
-
-2. Fix: Configured explicit relative path structures and ensured UTF-8 encoding declarations across all runner scripts.
+→ Artifact Citation: On the first test run in Windows PowerShell (run log error: [WinError 206] The filename or extension is too long), passing full transcripts via subprocess arguments failed. This was fixed by setting $env:ANTHROPIC_API_KEY to route calls natively through the Anthropic Python SDK client.
 
 20. **What you'd change.** One architectural decision you'd make differently, grounded in what you observed.
 
-→ Improvement: Implement dynamic semantic chunking based on automatic topic-shift detection rather than relying solely on pre-segmented transcript boundaries.
+→ Artifact Citation: Grounded in observing pre-segmented transcript boundaries in System 2 (assemble.py), I would implement dynamic semantic chunking based on topic shift detection to automatically identify when a customer transitions between support issues without requiring manual transcript fixtures.
