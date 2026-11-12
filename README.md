@@ -66,7 +66,7 @@ SYSTEMS="../../Github Repos/cd15315 Claude AI Engineer Harness Engineering"
 
 ```bash
 cd "$SYSTEMS/Build a Claims Intake Agent with a stop_reason-Driven Loop/exercises/03-dynamic-decomposition/solution"
-python -m venv .venv && source .venv/bin/activate
+python -m venv .venv && source .venv/Scripts/activate
 pip install -e ".[dev]"
 
 pytest tests/ -v                       # expect 29 passed
